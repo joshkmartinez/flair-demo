@@ -1,12 +1,12 @@
 import logo from "./logo.svg";
 import "./App.css";
-
+import ReactPlayer from "react-player";
 import {
   ChakraProvider,
   extendTheme,
   Box,
   Button,
-  CloseButton,
+  Flex,
   Container,
   Icon,
   Square,
@@ -26,8 +26,17 @@ import {
   TagLabel,
   TagCloseButton,
   TagLeftIcon,
+  Slider,
+  SliderTrack,
+  SliderFilledTrack,
+  SliderMark,
+  SliderThumb,
+  Tooltip,
+  Spinner,
+  Input,
 } from "@chakra-ui/react";
 import { FiEdit2, FiCheck, FiPlus } from "react-icons/fi";
+import { useState } from "react";
 
 const theme = extendTheme({
   /*fonts: {
@@ -43,7 +52,7 @@ const theme = extendTheme({
 
 const Header = () => {
   return (
-    <Box p={4}>
+    <Box m={6}>
       <Heading size="md">Caller #123456</Heading>
     </Box>
   );
@@ -53,14 +62,14 @@ const Issue = () => {
   return (
     <Box width={200}>
       <Box py={3} m={3}>
-        <Box>
-          <Heading size="md">Customer Info</Heading>
+        <Heading size="md">Customer Info</Heading>
+        <Box py={3}>
           <Tag>Residential</Tag>
-          <Text color="grey">English, Spanish</Text>
-          <Text color="grey">9:00</Text>
+          <Text color="grey">English</Text>
+          <Text color="grey">9:31 am PST</Text>
         </Box>
 
-        <Box p={3}>
+        <Box py={3}>
           <Heading size="xs">Name</Heading>
           <Text>Greg Abott</Text>
           <Heading size="xs">ANI</Heading>
@@ -95,6 +104,17 @@ const Issue = () => {
 };
 
 const Transcript = () => {
+  const [file, setFile] = useState();
+
+  const [loading, setLoading] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [player, setPlayer] = useState();
+  const [seeking, setSeeking] = useState(false);
+  const [playedSeconds, setPlayedSeconds] = useState();
+  const [currStep, setCurrStep] = useState();
+
   const log = [
     { speaker: "agent", text: "Hello" },
     { speaker: "caller", text: "World" },
@@ -103,9 +123,142 @@ const Transcript = () => {
     { speaker: "agent", text: "Bongo" },
   ];
 
+  const key = [
+    { label: "greeting", color: "green" },
+    { label: "question", color: "yellow" },
+  ];
+
+  const data = [
+    { time: 1000, label: "greeting" },
+    { time: 2000, label: "greeting" },
+    { time: 6000, label: "question" },
+    { time: 9000, label: "greeting" },
+    { time: 10000, label: "greeting" },
+    { time: 11000, label: "question" },
+  ];
+
+  const ref = (player) => {
+    setPlayer(player);
+  };
+
+  const handleSeekMouseDown = (e) => {
+    setSeeking(true);
+  };
+
+  const handleSeekMouseUp = (v) => {
+    setSeeking(false);
+    player.seekTo(v, "seconds");
+  };
+
+  const handleProgress = (state) => {
+    if (!seeking) setPlayedSeconds(state.playedSeconds);
+  };
+
   return (
     <Box>
       <Box m={3}>
+        <Center>
+          <Input
+            width={300}
+            borderWidth={0}
+            type="file"
+            onChange={(e) => {
+              setFile(e.target.files[0]);
+              setLoading(true);
+              setTimeout(() => setLoading(false), 5000);
+            }}
+          />
+        </Center>
+
+        {loading ? (
+          <Spinner />
+        ) : (
+          <Box>
+            <Center mb={9} mt={-230}>
+              <ReactPlayer
+                controls
+                playing={playing}
+                onReady={() => {
+                  setTimeout(() => {
+                    setPlayerReady(true);
+                  }, 1000);
+                }}
+                ref={ref}
+                url="/AUDIO_8076.mp3"
+                onProgress={(state) => handleProgress(state)}
+              />
+            </Center>
+            <Center>
+              <Box>
+                {key.map((item) => {
+                  return (
+                    <Flex m={3} key={item.label}>
+                      <Box bg={item.color} height={30} width={30} />
+                      <Text mx={2}>{item.label}</Text>
+                    </Flex>
+                  );
+                })}
+              </Box>
+            </Center>
+          </Box>
+        )}
+        {playerReady && (
+          <Slider
+            size="sm"
+            defaultValue={0}
+            min={0}
+            max={player.getDuration()}
+            onChangeStart={(v) => handleSeekMouseDown(v)}
+            onChangeEnd={(v) => handleSeekMouseUp(v)}
+            onChange={(v) => setPlayedSeconds(v)}
+            value={playedSeconds}
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <SliderTrack height={5}>
+              <SliderFilledTrack bg="gainsboro" />
+            </SliderTrack>
+
+            {data.map((timestamp, i) => {
+              const findKeyIndex = (label) => {
+                for (let i = 0; i < key.length; i++) {
+                  if (key[i].label === label) {
+                    return i;
+                  }
+                }
+              };
+
+              if (timestamp.label === "no label") return;
+
+              var time = timestamp.time / 1000;
+              return (
+                <SliderMark key={timestamp.time} value={time} mt="-18">
+                  <Box
+                    borderRadius={9}
+                    height={9}
+                    width={1}
+                    bg={key[findKeyIndex(timestamp.label)].color}
+                  />
+                </SliderMark>
+              );
+            })}
+
+            <Tooltip
+              hasArrow
+              bg="teal.500"
+              color="white"
+              placement="top"
+              isOpen={showTooltip}
+              label={"test"}
+            >
+              <SliderThumb size="sm">
+                <Box width={1} height={16} bg="whitesmoke" borderWidth={1} />
+              </SliderThumb>
+            </Tooltip>
+          </Slider>
+        )}
+
+        {/*
         <Heading>Transcript</Heading>
         {log.map((item) => {
           return (
@@ -122,7 +275,7 @@ const Transcript = () => {
               </Text>
             </Box>
           );
-        })}
+        })}*/}
       </Box>
 
       <Divider />
@@ -145,9 +298,9 @@ const ProgressStats = () => {
   ];
 
   return (
-    <Box width={230}>
+    <Box width={330}>
       <Box my={6} mx={3}>
-        <Heading size="sm">Progress</Heading>
+        <Heading size="md">Progress</Heading>
         <Center>
           <Box>
             <Center>
@@ -165,8 +318,8 @@ const ProgressStats = () => {
 
       <Divider />
 
-      <Box my={6} mx={3}>
-        <Heading size="sm">Customer Issue</Heading>
+      {/*<Box my={6} mx={3}>
+        <Heading size="md">Customer Issue</Heading>
         <Box>
           <Text fontWeight="bold" fontSize="lg">
             High Billing
@@ -176,12 +329,12 @@ const ProgressStats = () => {
             Change
           </Button>
         </Box>
-      </Box>
+  </Box>*/}
 
       <Divider />
 
       <Box my={6} mx={3}>
-        <Heading size="sm">Template</Heading>
+        <Heading size="md">Template</Heading>
         <Box>
           <List spacing={3}>
             {template.map((item) => {
@@ -199,7 +352,7 @@ const ProgressStats = () => {
       <Divider />
 
       <Box my={6} mx={3}>
-        <Heading size="sm">Sentiment</Heading>
+        <Heading size="md">Sentiment</Heading>
         <Center>
           <Box>
             <Center>
@@ -225,19 +378,19 @@ const App = () => {
           gridTemplateRows={"60px 1fr 30px"}
           gridTemplateColumns={"200px 1fr"}
           h="100vh"
-          gap="3"
+          //gap="3"
           color="blackAlpha.700"
         >
-          <GridItem bg="orange.300" area={"header"}>
+          <GridItem borderBottomWidth={3} area={"header"}>
             <Header />
           </GridItem>
-          <GridItem bg="pink.300" area={"issue"}>
+          <GridItem borderRightWidth={3} area={"issue"}>
             <Issue />
           </GridItem>
-          <GridItem bg="green.300" area={"transcript"}>
+          <GridItem area={"transcript"}>
             <Transcript />
           </GridItem>
-          <GridItem bg="blue.300" area={"progress"}>
+          <GridItem borderLeftWidth={3} area={"progress"}>
             <ProgressStats />
           </GridItem>
         </Grid>
